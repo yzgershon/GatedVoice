@@ -40,7 +40,7 @@ public sealed class AppSettings
     public string ScratchKey { get; set; } = "N";
 
     public static string DataDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Flow");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ShyVoice");
 
     public static string SettingsPath => Path.Combine(DataDir, "settings.json");
 

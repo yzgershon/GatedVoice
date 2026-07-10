@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <!-- Runtime target (win-x64 / win-arm64) is chosen at publish time via -r. -->
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
-    <AssemblyName>Flow</AssemblyName>
+    <AssemblyName>ShyVoice</AssemblyName>
     <RootNamespace>Flow</RootNamespace>
     <Version>0.1.0</Version>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

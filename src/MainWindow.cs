@@ -24,7 +24,7 @@ public sealed class MainWindow : Form
     {
         _bridge = new FlowBridge(this, reloadData);
 
-        Text = "Flow";
+        Text = "ShyVoice";
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1180, 800);
@@ -68,7 +68,7 @@ public sealed class MainWindow : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Could not start the Flow window.\n\n" + ex.Message, "Flow",
+            MessageBox.Show("Could not start the ShyVoice window.\n\n" + ex.Message, "ShyVoice",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }

@@ -1,12 +1,14 @@
 <div align="center">
 
-# 🎙️ Flow
+# 🎙️ ShyVoice
 
 ### Free, private voice dictation for Windows. Hold a key, talk, and your words appear in any app.
 
-Flow is a free and open-source alternative to paid dictation apps like Wispr Flow.
+ShyVoice is a free and open-source alternative to paid dictation apps like Wispr Flow.
 Speech-to-text runs **100% on your own machine** with [Whisper](https://github.com/ggerganov/whisper.cpp) —
 no account, no subscription, no per-word cost, and nothing ever leaves your computer.
+
+<sub>A **ShyLabs** project.</sub>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-17836B.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/Windows-x64%20%7C%20ARM64-0078D6)
@@ -14,15 +16,15 @@ no account, no subscription, no per-word cost, and nothing ever leaves your comp
 ![Local & Private](https://img.shields.io/badge/100%25-Local%20%26%20Private-17836B)
 ![Price](https://img.shields.io/badge/Price-Free%20forever-2ea44f)
 
-<img src="docs/screenshot.png" alt="Flow dashboard" width="820">
+<img src="docs/screenshot.png" alt="ShyVoice dashboard" width="820">
 
 </div>
 
 ---
 
-## Why Flow?
+## Why ShyVoice?
 
-Good dictation apps cost money and send your voice to their servers. Flow does neither.
+Good dictation apps cost money and send your voice to their servers. ShyVoice does neither.
 
 - 🆓 **Actually free** — no trial, no subscription, no usage cap. MIT licensed.
 - 🔒 **Private by design** — audio is transcribed locally with Whisper and never uploaded. It works with your Wi-Fi off.
@@ -36,10 +38,10 @@ Good dictation apps cost money and send your voice to their servers. Flow does n
 ### Option 1 — Download and run (easiest)
 
 1. Grab the latest **[Release](../../releases/latest)** and download the ZIP for your PC:
-   - `Flow-win-x64.zip` — most Windows PCs (Intel / AMD)
-   - `Flow-win-arm64.zip` — Windows on ARM (Snapdragon, etc.)
-2. Unzip it anywhere and run **`Flow.exe`**.
-3. On first launch Flow downloads the speech model once (~148 MB), then a **"Flow is ready"** popup appears.
+   - `ShyVoice-win-x64.zip` — most Windows PCs (Intel / AMD)
+   - `ShyVoice-win-arm64.zip` — Windows on ARM (Snapdragon, etc.)
+2. Unzip it anywhere and run **`ShyVoice.exe`**.
+3. On first launch ShyVoice downloads the speech model once (~148 MB), then a **"ShyVoice is ready"** popup appears.
 4. Click into any text box, **hold `Ctrl` + `Space`**, talk, and release. Your words are typed in.
 
 > Windows may show a SmartScreen warning because the app isn't code-signed (signing costs money; this is free).
@@ -50,8 +52,8 @@ Good dictation apps cost money and send your voice to their servers. Flow does n
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```powershell
-git clone https://github.com/yzgershon/flow.git
-cd flow
+git clone https://github.com/yzgershon/shyvoice.git
+cd shyvoice
 
 # run it
 dotnet run -c Release
@@ -71,7 +73,7 @@ Both are push-to-talk — text lands the instant you let go. Everything else liv
 
 ## Features
 
-- **Custom dictionary** — teach Flow to spell names and jargon right. It hints Whisper toward your spelling *and* fixes common mishears.
+- **Custom dictionary** — teach ShyVoice to spell names and jargon right. It hints Whisper toward your spelling *and* fixes common mishears.
 - **Snippets** — say a trigger phrase, get a saved block of text (your email, a signature, a link).
 - **Insights** — total words, average WPM, words per day, and a daily streak.
 - **Style controls** — trailing spaces, filler-word removal ("um", "uh"), paste vs. type.
@@ -80,7 +82,7 @@ Both are push-to-talk — text lands the instant you let go. Everything else liv
 
 ## Privacy
 
-Your voice is turned into text **on your device** by Whisper. No audio and no transcripts are ever sent anywhere — the only network request Flow ever makes on its own is the one-time model download on first run (and optional cloud AI, only if *you* turn it on and add a key). Your settings and history live in a local folder (`%APPDATA%\Flow`) that only you can see.
+Your voice is turned into text **on your device** by Whisper. No audio and no transcripts are ever sent anywhere — the only network request ShyVoice ever makes on its own is the one-time model download on first run (and optional cloud AI, only if *you* turn it on and add a key). Your settings and history live in a local folder (`%APPDATA%\ShyVoice`) that only you can see.
 
 ## How it works
 
@@ -95,10 +97,12 @@ Built for **Windows on x64 and ARM64**, running natively on both.
 
 ## Contributing
 
-Issues and pull requests are welcome. This started as a personal project to avoid paying for dictation — if it's useful to you, a ⭐ helps other people find it.
+Issues and pull requests are welcome. ShyVoice started as a personal project to avoid paying for dictation — if it's useful to you, a ⭐ helps other people find it.
 
 ## License
 
 [MIT](LICENSE) — free to use, modify, and share.
 
 Whisper models are © their respective authors and downloaded from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp) on first run.
+
+<div align="center"><sub>Part of <b>ShyLabs</b> — tools built by <a href="https://github.com/yzgershon">@yzgershon</a>.</sub></div>

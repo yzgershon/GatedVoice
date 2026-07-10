@@ -10,11 +10,11 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
-        using var mutex = new Mutex(true, "Flow_VoiceDictation_SingleInstance", out bool isNew);
+        using var mutex = new Mutex(true, "ShyVoice_SingleInstance", out bool isNew);
         if (!isNew)
         {
-            MessageBox.Show("Flow is already running. Look for the mic icon in your system tray.",
-                "Flow", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("ShyVoice is already running. Look for the mic icon in your system tray.",
+                "ShyVoice", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
