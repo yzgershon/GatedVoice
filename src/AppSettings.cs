@@ -39,6 +39,9 @@ public sealed class AppSettings
     public string ScratchModifier { get; set; } = "Alt";
     public string ScratchKey { get; set; } = "N";
 
+    // Folder name intentionally stays "ShyVoice" (the app's former name) so existing
+    // installs keep their downloaded speech model, settings, and history after the
+    // GatedVoice rebrand. Only the folder name is legacy; everything user-facing is GatedVoice.
     public static string DataDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ShyVoice");
 

@@ -9,7 +9,7 @@ public sealed class InsightsForm : Form
 {
     public InsightsForm(Insights i)
     {
-        Text = "ShyVoice — Insights";
+        Text = "GatedVoice — Insights";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

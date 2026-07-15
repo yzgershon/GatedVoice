@@ -3,11 +3,11 @@ using Microsoft.Win32;
 
 namespace Flow;
 
-/// <summary>Toggles "launch ShyVoice when I sign in" via the per-user Run registry key.</summary>
+/// <summary>Toggles "launch GatedVoice when I sign in" via the per-user Run registry key.</summary>
 internal static class StartupManager
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "ShyVoice";
+    private const string ValueName = "GatedVoice";
 
     public static bool IsEnabled()
     {

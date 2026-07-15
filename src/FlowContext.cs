@@ -54,7 +54,7 @@ public sealed class FlowContext : ApplicationContext
         _tray = new NotifyIcon
         {
             Icon = IconFactory.Create(_settings.Enabled),
-            Text = "ShyVoice — loading model…",
+            Text = "GatedVoice — loading model…",
             Visible = true,
         };
         BuildMenu();
@@ -97,12 +97,12 @@ public sealed class FlowContext : ApplicationContext
             {
                 // First run with no model: fetch the default one (~148 MB) automatically.
                 SetStatus("Downloading model…");
-                _tray.ShowBalloonTip(4000, "ShyVoice", "First run: downloading the speech model (~148 MB). One-time.", ToolTipIcon.Info);
+                _tray.ShowBalloonTip(4000, "GatedVoice", "First run: downloading the speech model (~148 MB). One-time.", ToolTipIcon.Info);
                 bool ok = await TryDownloadModelAsync(model);
                 if (!ok || !File.Exists(model))
                 {
                     SetStatus("Model not found");
-                    _tray.ShowBalloonTip(9000, "ShyVoice",
+                    _tray.ShowBalloonTip(9000, "GatedVoice",
                         $"Couldn't download the speech model.\nPut a ggml model here and restart:\n{Path.GetDirectoryName(model)}",
                         ToolTipIcon.Warning);
                     return;
@@ -121,13 +121,13 @@ public sealed class FlowContext : ApplicationContext
 
             _modelReady = true;
             SetStatus(_settings.Enabled ? "Ready" : "Disabled");
-            _tray.ShowBalloonTip(3000, "ShyVoice is ready",
+            _tray.ShowBalloonTip(3000, "GatedVoice is ready",
                 $"Hold {_settings.Modifier} + {_settings.Key} and speak.", ToolTipIcon.Info);
         }
         catch (Exception ex)
         {
             SetStatus("Model failed to load");
-            _tray.ShowBalloonTip(6000, "ShyVoice error", ex.Message, ToolTipIcon.Error);
+            _tray.ShowBalloonTip(6000, "GatedVoice error", ex.Message, ToolTipIcon.Error);
         }
     }
 
@@ -166,7 +166,7 @@ public sealed class FlowContext : ApplicationContext
         if (!_settings.Enabled || _busy) return;
         if (!_modelReady)
         {
-            _tray.ShowBalloonTip(2000, "ShyVoice", "Still loading the model, one sec…", ToolTipIcon.Info);
+            _tray.ShowBalloonTip(2000, "GatedVoice", "Still loading the model, one sec…", ToolTipIcon.Info);
             return;
         }
         if (_recorder.IsRecording) return;
@@ -310,7 +310,7 @@ public sealed class FlowContext : ApplicationContext
         }
         catch (Exception ex)
         {
-            _tray.ShowBalloonTip(4000, "ShyVoice error", ex.Message, ToolTipIcon.Error);
+            _tray.ShowBalloonTip(4000, "GatedVoice error", ex.Message, ToolTipIcon.Error);
         }
         finally
         {
@@ -350,7 +350,7 @@ public sealed class FlowContext : ApplicationContext
     {
         var menu = new ContextMenuStrip();
 
-        _statusItem = new ToolStripMenuItem("ShyVoice — loading…") { Enabled = false };
+        _statusItem = new ToolStripMenuItem("GatedVoice — loading…") { Enabled = false };
         menu.Items.Add(_statusItem);
         menu.Items.Add(new ToolStripMenuItem($"Hold {_settings.Modifier} + {_settings.Key} to talk") { Enabled = false });
         menu.Items.Add(new ToolStripMenuItem($"Hold {_settings.TransformModifier} + {_settings.TransformKey} to polish") { Enabled = false });
@@ -358,7 +358,7 @@ public sealed class FlowContext : ApplicationContext
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var openItem = new ToolStripMenuItem("Open ShyVoice", null, (_, _) => OpenMain());
+        var openItem = new ToolStripMenuItem("Open GatedVoice", null, (_, _) => OpenMain());
         openItem.Font = new Font(openItem.Font, FontStyle.Bold);
         menu.Items.Add(openItem);
 
@@ -411,7 +411,7 @@ public sealed class FlowContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Open data folder", null, (_, _) => OpenPath(AppSettings.DataDir)));
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Quit ShyVoice", null, (_, _) => Quit()));
+        menu.Items.Add(new ToolStripMenuItem("Quit GatedVoice", null, (_, _) => Quit()));
 
         _tray.ContextMenuStrip = menu;
     }
@@ -457,7 +457,7 @@ public sealed class FlowContext : ApplicationContext
         _ai = new AiTransformer(_settings);
         _overlay.Theme = PillThemes.Get(_settings.Theme);
 
-        if (notify) _tray.ShowBalloonTip(2000, "ShyVoice", "Dictionary and snippets reloaded.", ToolTipIcon.Info);
+        if (notify) _tray.ShowBalloonTip(2000, "GatedVoice", "Dictionary and snippets reloaded.", ToolTipIcon.Info);
     }
 
     private void OpenMain()
@@ -468,8 +468,8 @@ public sealed class FlowContext : ApplicationContext
 
     private void SetStatus(string status)
     {
-        _statusItem.Text = $"ShyVoice — {status}";
-        _tray.Text = $"ShyVoice — {status}";
+        _statusItem.Text = $"GatedVoice — {status}";
+        _tray.Text = $"GatedVoice — {status}";
     }
 
     private static void OpenPath(string path)

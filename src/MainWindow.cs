@@ -24,7 +24,7 @@ public sealed class MainWindow : Form
     {
         _bridge = new FlowBridge(this, reloadData);
 
-        Text = "ShyVoice";
+        Text = "GatedVoice";
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1180, 800);
@@ -68,7 +68,7 @@ public sealed class MainWindow : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Could not start the ShyVoice window.\n\n" + ex.Message, "ShyVoice",
+            MessageBox.Show("Could not start the GatedVoice window.\n\n" + ex.Message, "GatedVoice",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
