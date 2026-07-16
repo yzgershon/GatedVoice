@@ -19,6 +19,8 @@ public static class TextInjector
 {
     private const byte VK_CONTROL = 0x11;
     private const byte VK_V = 0x56;
+    private const int ClipboardAttempts = 8;
+    private const int ClipboardRetryDelayMs = 25;
 
     // Terminal emulators that don't paste on a bare Ctrl+V. Matched against the
     // foreground process name (case-insensitive) when the window class isn't a
@@ -46,10 +48,33 @@ public static class TextInjector
         // even when paste is the configured default.
         bool type = !paste || TargetIgnoresPaste();
 
-        var t = new Thread(() => { if (type) DoType(text); else DoPaste(text); })
-            { IsBackground = true };
+        var t = new Thread(() =>
+        {
+            // StopCapture can run when Space is released while Ctrl/Alt is still down.
+            // Injecting immediately would turn a leading "v" into Ctrl+V (Codex's
+            // image-paste command) and other letters into terminal control commands.
+            WaitForModifiersUp();
+            if (type) DoType(text); else DoPaste(text);
+        }) { IsBackground = true };
         t.SetApartmentState(ApartmentState.STA);
         t.Start();
+    }
+
+    /// <summary>
+    /// Wait briefly for the push-to-talk modifier to be physically released before
+    /// injecting input. The timeout avoids hanging forever on a stuck modifier key.
+    /// </summary>
+    private static void WaitForModifiersUp()
+    {
+        for (int i = 0; i < 100 && AnyModifierDown(); i++)
+            Thread.Sleep(10);
+    }
+
+    private static bool AnyModifierDown()
+    {
+        static bool Down(int vk) => (Native.GetAsyncKeyState(vk) & 0x8000) != 0;
+        return Down(Native.VK_CONTROL) || Down(Native.VK_MENU) || Down(Native.VK_SHIFT)
+            || Down(Native.VK_LWIN) || Down(Native.VK_RWIN);
     }
 
     private static void DoPaste(string text)
@@ -57,20 +82,33 @@ public static class TextInjector
         string? backup = null;
         try { if (Clipboard.ContainsText()) backup = Clipboard.GetText(); } catch { }
 
+        // Never emit Ctrl+V unless the transcript is definitely on the clipboard.
+        // GatedSpace forwards a paste with no text to terminal TUIs; Codex interprets
+        // the resulting ^V as "paste image", producing the misleading clipboard error.
         if (!TrySetClipboard(text))
         {
-            Thread.Sleep(40);
-            TrySetClipboard(text);
+            DoType(text);
+            return;
         }
 
         Thread.Sleep(30);
+        if (!ClipboardMatches(text))
+        {
+            // Another process changed or locked the clipboard between our write and
+            // the paste. Typing is slower, but it cannot trigger a terminal command.
+            DoType(text);
+            return;
+        }
+
         Native.keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
         Native.keybd_event(VK_V, 0, 0, UIntPtr.Zero);
         Native.keybd_event(VK_V, 0, Native.KEYEVENTF_KEYUP, UIntPtr.Zero);
         Native.keybd_event(VK_CONTROL, 0, Native.KEYEVENTF_KEYUP, UIntPtr.Zero);
 
         Thread.Sleep(140);
-        if (backup != null) TrySetClipboard(backup);
+        // Do not overwrite a clipboard change made by the user or target app while
+        // the paste was being processed.
+        if (backup != null && ClipboardMatches(text)) TrySetClipboard(backup);
     }
 
     /// <summary>
@@ -95,6 +133,7 @@ public static class TextInjector
         }
 
         if (inputs.Count == 0) return;
+        Thread.Sleep(15); // let focus settle after the hotkey modifier is released
         Native.SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<Native.INPUT>());
     }
 
@@ -152,7 +191,29 @@ public static class TextInjector
 
     private static bool TrySetClipboard(string text)
     {
-        try { Clipboard.SetText(text); return true; }
+        for (int attempt = 0; attempt < ClipboardAttempts; attempt++)
+        {
+            try
+            {
+                Clipboard.SetText(text, TextDataFormat.UnicodeText);
+                if (ClipboardMatches(text)) return true;
+            }
+            catch { /* clipboard may be briefly locked by another process */ }
+
+            if (attempt + 1 < ClipboardAttempts)
+                Thread.Sleep(ClipboardRetryDelayMs);
+        }
+        return false;
+    }
+
+    private static bool ClipboardMatches(string text)
+    {
+        try
+        {
+            return Clipboard.ContainsText(TextDataFormat.UnicodeText)
+                && string.Equals(Clipboard.GetText(TextDataFormat.UnicodeText), text,
+                    StringComparison.Ordinal);
+        }
         catch { return false; }
     }
 }

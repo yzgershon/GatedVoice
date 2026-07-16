@@ -82,6 +82,17 @@ internal static class Native
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+    // ---- Physical key state (used to wait out the dictation hotkey's modifier
+    // before typing, so the first character is not treated as Ctrl/Alt+<letter>) ----
+    public const int VK_SHIFT = 0x10;
+    public const int VK_CONTROL = 0x11;
+    public const int VK_MENU = 0x12;   // Alt
+    public const int VK_LWIN = 0x5B;
+    public const int VK_RWIN = 0x5C;
+
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
+
     // ---- Layered window (per-pixel alpha overlay) ----
     public const int ULW_ALPHA = 0x02;
     public const byte AC_SRC_OVER = 0x00;
