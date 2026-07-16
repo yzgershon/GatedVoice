@@ -42,6 +42,7 @@ public sealed class FlowContext : ApplicationContext
     private CaptureMode _mode;
     private DateTime _captureStart;
     private CancellationTokenSource? _partialCts;
+    private Task? _partialTask;
 
     public FlowContext()
     {
@@ -95,10 +96,11 @@ public sealed class FlowContext : ApplicationContext
             string model = AppSettings.ResolveModelPath(_settings.ModelPath);
             if (!File.Exists(model))
             {
-                // First run with no model: fetch the default one (~148 MB) automatically.
+                // First run with no model: fetch the compact base model automatically.
                 SetStatus("Downloading model…");
-                _tray.ShowBalloonTip(4000, "GatedVoice", "First run: downloading the speech model (~148 MB). One-time.", ToolTipIcon.Info);
-                bool ok = await TryDownloadModelAsync(model);
+                _tray.ShowBalloonTip(4000, "GatedVoice", "First run: downloading the speech model (~60 MB). One-time.", ToolTipIcon.Info);
+                bool ok = await TryDownloadModelAsync(model,
+                    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin");
                 if (!ok || !File.Exists(model))
                 {
                     SetStatus("Model not found");
@@ -109,13 +111,19 @@ public sealed class FlowContext : ApplicationContext
                 }
             }
 
-            _transcriber = await Task.Run(() => new Transcriber(model, _settings.Language, "main"));
+            // Whisper.net's 12-thread default badly oversubscribes this ARM64 CPU.
+            // Three threads plus an input-sized context keeps short dictation near 1-2s.
+            _transcriber = await Task.Run(() =>
+                new Transcriber(model, _settings.Language, "main", threads: 3,
+                    adaptiveAudioContext: true));
 
-            // Optional fast model for live word-by-word preview.
+            // Load an existing live model before announcing readiness. If this is a
+            // clean install, prepare the small model in the background instead of
+            // delaying normal dictation.
             string liveModel = AppSettings.ResolveLiveModelPath(_settings.LiveModelPath);
             if (!string.IsNullOrEmpty(liveModel))
             {
-                try { _liveTranscriber = await Task.Run(() => new Transcriber(liveModel, _settings.Language, "live")); }
+                try { _liveTranscriber = await CreateLiveTranscriberAsync(liveModel); }
                 catch { _liveTranscriber = null; }
             }
 
@@ -123,6 +131,9 @@ public sealed class FlowContext : ApplicationContext
             SetStatus(_settings.Enabled ? "Ready" : "Disabled");
             _tray.ShowBalloonTip(3000, "GatedVoice is ready",
                 $"Hold {_settings.Modifier} + {_settings.Key} and speak.", ToolTipIcon.Info);
+
+            if (_liveTranscriber == null)
+                _ = PrepareLiveTranscriberAsync();
         }
         catch (Exception ex)
         {
@@ -131,10 +142,35 @@ public sealed class FlowContext : ApplicationContext
         }
     }
 
-    /// <summary>Downloads the default Whisper model to <paramref name="destPath"/> on first run.</summary>
-    private static async Task<bool> TryDownloadModelAsync(string destPath)
+    private Task<Transcriber> CreateLiveTranscriberAsync(string modelPath) =>
+        Task.Run(() => new Transcriber(modelPath, _settings.Language, "live",
+            threads: 2, audioContextSize: 512, singleSegment: true));
+
+    /// <summary>
+    /// Downloads the compact live-preview model without blocking normal dictation.
+    /// A failed download is harmless: final transcription remains available and the
+    /// next launch tries again.
+    /// </summary>
+    private async Task PrepareLiveTranscriberAsync()
     {
-        const string url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin";
+        const string url =
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin";
+        try
+        {
+            string path = AppSettings.DefaultLiveModelPath;
+            _tray.ShowBalloonTip(2500, "GatedVoice",
+                "Setting up fast live preview (32 MB, one time).", ToolTipIcon.Info);
+            if (!await TryDownloadModelAsync(path, url) || !File.Exists(path)) return;
+
+            _liveTranscriber = await CreateLiveTranscriberAsync(path);
+            _tray.ShowBalloonTip(2000, "GatedVoice", "Live word preview is ready.", ToolTipIcon.Info);
+        }
+        catch { _liveTranscriber = null; }
+    }
+
+    /// <summary>Downloads a Whisper model to <paramref name="destPath"/>.</summary>
+    private static async Task<bool> TryDownloadModelAsync(string destPath, string url)
+    {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
@@ -179,8 +215,9 @@ public sealed class FlowContext : ApplicationContext
             _recorder.Start();
             _overlay.ShowState("", OverlayForm.State.Listening);
 
+            _partialCts?.Dispose();
             _partialCts = new CancellationTokenSource();
-            _ = RunPartialLoop(_partialCts.Token);
+            _partialTask = RunPartialLoop(_partialCts.Token);
         }
         catch (Exception ex)
         {
@@ -191,8 +228,10 @@ public sealed class FlowContext : ApplicationContext
     /// <summary>Transcribes the growing audio while you speak and streams the words into the field.</summary>
     private async Task RunPartialLoop(CancellationToken ct)
     {
-        // Prefer the small/fast model for live preview; fall back to the main model.
-        Transcriber? live = _liveTranscriber ?? _transcriber;
+        // Never run previews through the accurate model: doing so makes final
+        // transcription wait behind preview work. A missing tiny model simply means
+        // no preview for this capture while its one-time download finishes.
+        Transcriber? live = _liveTranscriber;
         if (live == null) return;
 
         const int WindowBytes = 7 * 16000 * 2; // last ~7s keeps inference fast no matter how long you talk
@@ -202,11 +241,11 @@ public sealed class FlowContext : ApplicationContext
             int lastLen = 0;
             while (!ct.IsCancellationRequested && _recorder.IsRecording)
             {
-                await Task.Delay(200, ct);
+                await Task.Delay(350, ct);
                 if (ct.IsCancellationRequested) break;
 
                 byte[] full = _recorder.SnapshotPcm();
-                if (full.Length < 8000) continue; // need >~0.25s of audio
+                if (full.Length < 16000) continue; // need >~0.5s of audio
 
                 // Only refresh when the newly-added audio actually contains speech,
                 // otherwise the text jitters while you're silent.
@@ -215,7 +254,9 @@ public sealed class FlowContext : ApplicationContext
                 lastLen = full.Length;
 
                 byte[] windowed = full.Length <= WindowBytes ? full : TailBytes(full, WindowBytes);
-                string partial = TextPipeline.Process(await live.TranscribeAsync(windowed, _dict.BuildPrompt()), _dict, _snips);
+                string partial = TextPipeline.Process(
+                    await live.TranscribeAsync(windowed, _dict.BuildPrompt(), ct),
+                    _dict, _snips);
                 if (!string.IsNullOrWhiteSpace(partial) && !ct.IsCancellationRequested)
                     _overlay.SetText(partial);
             }
@@ -268,6 +309,7 @@ public sealed class FlowContext : ApplicationContext
         if (!_recorder.IsRecording) return;
 
         _partialCts?.Cancel();
+        Task? partialTask = _partialTask;
         _busy = true;
         bool polish = _mode == CaptureMode.Polish && _ai.Configured;
         try
@@ -276,6 +318,17 @@ public sealed class FlowContext : ApplicationContext
             double seconds = (DateTime.UtcNow - _captureStart).TotalSeconds;
 
             byte[] pcm = await _recorder.StopAsync();
+            // Give the cancellable preview a brief moment to release its CPU threads
+            // before starting the accuracy pass. It uses a separate model and can
+            // never hold the main transcriber's semaphore.
+            if (partialTask != null)
+            {
+                try { await partialTask.WaitAsync(TimeSpan.FromMilliseconds(300)); }
+                catch (OperationCanceledException) { }
+                catch (TimeoutException) { }
+                catch { /* preview is best-effort */ }
+            }
+
             if (pcm.Length < 3200) { _overlay.HideState(); return; } // < ~0.1s of audio
             if (MaxChunkRms(pcm, 9600) < 235) { _overlay.HideState(); return; } // pressed but said nothing
 
@@ -314,6 +367,9 @@ public sealed class FlowContext : ApplicationContext
         }
         finally
         {
+            _partialTask = null;
+            _partialCts?.Dispose();
+            _partialCts = null;
             _overlay.HideState();
             _busy = false;
             _mode = CaptureMode.Dictate;
@@ -490,6 +546,8 @@ public sealed class FlowContext : ApplicationContext
             _dictateKey?.Dispose();
             _polishKey?.Dispose();
             _scratchKey?.Dispose();
+            _partialCts?.Cancel();
+            _partialCts?.Dispose();
             _transcriber?.Dispose();
             _liveTranscriber?.Dispose();
             _overlay.Dispose();

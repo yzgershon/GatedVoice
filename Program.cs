@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
@@ -10,6 +11,12 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        // Whisper's native worker threads inherit the process priority. A small
+        // boost keeps short dictations responsive when the desktop and terminal
+        // are busy, while GatedVoice remains idle between captures.
+        try { Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.AboveNormal; }
+        catch { /* some managed environments do not permit priority changes */ }
+
         using var mutex = new Mutex(true, "GatedVoice_SingleInstance", out bool isNew);
         if (!isNew)
         {

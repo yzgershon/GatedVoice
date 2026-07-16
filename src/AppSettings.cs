@@ -83,14 +83,19 @@ public sealed class AppSettings
         string[] candidates =
         {
             configured,
+            DefaultModelPath,
             Path.Combine(DataDir, "models", "ggml-base.en.bin"),
+            Path.Combine(AppContext.BaseDirectory, "models", "ggml-base.en-q5_1.bin"),
             Path.Combine(AppContext.BaseDirectory, "models", "ggml-base.en.bin"),
         };
         foreach (var c in candidates)
             if (!string.IsNullOrWhiteSpace(c) && File.Exists(c)) return c;
 
-        return Path.Combine(DataDir, "models", "ggml-base.en.bin");
+        return DefaultModelPath;
     }
+
+    public static string DefaultModelPath =>
+        Path.Combine(DataDir, "models", "ggml-base.en-q5_1.bin");
 
     /// <summary>Finds the small/fast model used for live partials (falls back to none).</summary>
     public static string ResolveLiveModelPath(string configured)
@@ -98,11 +103,16 @@ public sealed class AppSettings
         string[] candidates =
         {
             configured,
+            DefaultLiveModelPath,
             Path.Combine(DataDir, "models", "ggml-tiny.en.bin"),
+            Path.Combine(AppContext.BaseDirectory, "models", "ggml-tiny.en-q5_1.bin"),
             Path.Combine(AppContext.BaseDirectory, "models", "ggml-tiny.en.bin"),
         };
         foreach (var c in candidates)
             if (!string.IsNullOrWhiteSpace(c) && File.Exists(c)) return c;
         return "";
     }
+
+    public static string DefaultLiveModelPath =>
+        Path.Combine(DataDir, "models", "ggml-tiny.en-q5_1.bin");
 }

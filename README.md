@@ -41,7 +41,7 @@ Good dictation apps cost money and send your voice to their servers. GatedVoice 
    - `GatedVoice-win-x64.zip` — most Windows PCs (Intel / AMD)
    - `GatedVoice-win-arm64.zip` — Windows on ARM (Snapdragon, etc.)
 2. Unzip it anywhere and run **`GatedVoice.exe`**.
-3. On first launch GatedVoice downloads the speech model once (~148 MB), then a **"GatedVoice is ready"** popup appears.
+3. On first launch GatedVoice downloads the speech model once (~60 MB), then prepares a smaller live-preview model (~32 MB) in the background. A **"GatedVoice is ready"** popup appears as soon as normal dictation is available.
 4. Click into any text box, **hold `Ctrl` + `Space`**, talk, and release. Your words are typed in.
 
 > Windows may show a SmartScreen warning because the app isn't code-signed (signing costs money; this is free).
@@ -82,7 +82,7 @@ Both are push-to-talk — text lands the instant you let go. Everything else liv
 
 ## Privacy
 
-Your voice is turned into text **on your device** by Whisper. No audio and no transcripts are ever sent anywhere — the only network request GatedVoice ever makes on its own is the one-time model download on first run (and optional cloud AI, only if *you* turn it on and add a key). Your settings and history live in a local folder (`%APPDATA%\GatedVoice`) that only you can see.
+Your voice is turned into text **on your device** by Whisper. No audio and no transcripts are ever sent anywhere — the only network requests GatedVoice makes on its own are the one-time speech-model downloads (and optional cloud AI, only if *you* turn it on and add a key). Your settings and history live in a local folder (`%APPDATA%\GatedVoice`) that only you can see.
 
 ## How it works
 
