@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using System.Windows.Automation;
 
 namespace Flow;
 
@@ -35,18 +36,77 @@ public static class TextInjector
         "GatedSpace",
     };
 
+    /// <summary>
+    /// The exact input element that owned focus when dictation began. Electron puts
+    /// every xterm pane under one native HWND, so the HWND alone cannot distinguish a
+    /// Claude pane from an empty sibling terminal.
+    /// </summary>
+    internal sealed class TargetSnapshot
+    {
+        internal IntPtr WindowHandle { get; init; }
+        internal int ProcessId { get; init; }
+        internal AutomationElement? FocusedElement { get; init; }
+    }
+
+    /// <summary>
+    /// Capture GatedSpace's exact focused accessibility element. Other applications
+    /// retain the existing "inject wherever focus is at completion" behaviour.
+    /// </summary>
+    internal static TargetSnapshot? CaptureTarget()
+    {
+        try
+        {
+            IntPtr hwnd = Native.GetForegroundWindow();
+            if (hwnd == IntPtr.Zero) return null;
+
+            Native.GetWindowThreadProcessId(hwnd, out uint pid);
+            if (pid == 0) return null;
+            using var process = Process.GetProcessById((int)pid);
+            if (!process.ProcessName.Equals("GatedSpace", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            AutomationElement? focused = null;
+            try
+            {
+                AutomationElement candidate = AutomationElement.FocusedElement;
+                if (candidate.Current.ProcessId == (int)pid
+                    && candidate.Current.IsEnabled
+                    && candidate.Current.IsKeyboardFocusable)
+                {
+                    focused = candidate;
+                }
+            }
+            catch
+            {
+                // UI Automation is best-effort. Unicode injection still works with
+                // whichever pane GatedSpace currently considers focused.
+            }
+
+            return new TargetSnapshot
+            {
+                WindowHandle = hwnd,
+                ProcessId = (int)pid,
+                FocusedElement = focused,
+            };
+        }
+        catch { return null; }
+    }
+
     /// <param name="paste">
     /// When true, use the fast clipboard-paste path in normal apps (terminals still
     /// get typed). When false, always type the text out as keystrokes.
     /// </param>
     public static void Insert(string text, bool paste = true)
+        => Insert(text, paste, null);
+
+    internal static void Insert(string text, bool paste, TargetSnapshot? target)
     {
         if (string.IsNullOrEmpty(text)) return;
 
         // A plain Ctrl+V is swallowed by most terminals (it's interpreted as a raw
         // control character, not "paste"), so fall back to typing the text there
         // even when paste is the configured default.
-        bool type = !paste || TargetIgnoresPaste();
+        bool type = !paste || target != null || TargetIgnoresPaste();
 
         var t = new Thread(() =>
         {
@@ -54,10 +114,37 @@ public static class TextInjector
             // Injecting immediately would turn a leading "v" into Ctrl+V (Codex's
             // image-paste command) and other letters into terminal control commands.
             WaitForModifiersUp();
+            RestoreTarget(target);
             if (type) DoType(text); else DoPaste(text);
         }) { IsBackground = true };
         t.SetApartmentState(ApartmentState.STA);
         t.Start();
+    }
+
+    /// <summary>
+    /// Restore the exact GatedSpace input that was focused at hotkey-down. Never
+    /// steal focus back if the user deliberately switched to another window while
+    /// speaking, and gracefully fall back if Electron replaced the DOM element.
+    /// </summary>
+    private static void RestoreTarget(TargetSnapshot? target)
+    {
+        if (target?.FocusedElement == null) return;
+        if (Native.GetForegroundWindow() != target.WindowHandle) return;
+
+        try
+        {
+            if (target.FocusedElement.Current.ProcessId != target.ProcessId
+                || !target.FocusedElement.Current.IsEnabled)
+                return;
+
+            target.FocusedElement.SetFocus();
+            Thread.Sleep(15); // allow Chromium to update document.activeElement
+        }
+        catch
+        {
+            // Stale or unavailable UIA elements are harmless: SendInput targets the
+            // element GatedSpace currently has focused, matching the old behaviour.
+        }
     }
 
     /// <summary>

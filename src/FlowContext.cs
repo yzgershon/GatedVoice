@@ -41,6 +41,7 @@ public sealed class FlowContext : ApplicationContext
     private bool _modelReady;
     private CaptureMode _mode;
     private DateTime _captureStart;
+    private TextInjector.TargetSnapshot? _textTarget;
     private CancellationTokenSource? _partialCts;
     private Task? _partialTask;
 
@@ -211,6 +212,12 @@ public sealed class FlowContext : ApplicationContext
         {
             _mode = mode;
             _captureStart = DateTime.UtcNow;
+            // GatedSpace can contain several xterm panes under one native window.
+            // Remember the exact DOM-accessibility element before anything has a
+            // chance to move focus while transcription is running.
+            _textTarget = mode == CaptureMode.Scratch
+                ? null
+                : TextInjector.CaptureTarget();
             _overlay.SetText("");
             _recorder.Start();
             _overlay.ShowState("", OverlayForm.State.Listening);
@@ -221,6 +228,7 @@ public sealed class FlowContext : ApplicationContext
         }
         catch (Exception ex)
         {
+            _textTarget = null;
             _tray.ShowBalloonTip(4000, "Microphone error", ex.Message, ToolTipIcon.Error);
         }
     }
@@ -310,6 +318,7 @@ public sealed class FlowContext : ApplicationContext
 
         _partialCts?.Cancel();
         Task? partialTask = _partialTask;
+        TextInjector.TargetSnapshot? textTarget = _textTarget;
         _busy = true;
         bool polish = _mode == CaptureMode.Polish && _ai.Configured;
         try
@@ -356,7 +365,10 @@ public sealed class FlowContext : ApplicationContext
                 else
                 {
                     _overlay.SetText(text);
-                    TextInjector.Insert(_settings.TrailingSpace ? text + " " : text, _settings.Paste);
+                    TextInjector.Insert(
+                        _settings.TrailingSpace ? text + " " : text,
+                        _settings.Paste,
+                        textTarget);
                 }
                 SetStatus("Ready");
             }
@@ -373,6 +385,7 @@ public sealed class FlowContext : ApplicationContext
             _overlay.HideState();
             _busy = false;
             _mode = CaptureMode.Dictate;
+            _textTarget = null;
         }
     }
 
